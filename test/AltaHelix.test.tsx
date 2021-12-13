@@ -1,0 +1,65 @@
+import { ethers } from "hardhat";
+import { expect } from "chai";
+
+describe("AltaHelix", function () {
+  before(async function () {
+    debugger;
+    this.AltaFin = await ethers.getContractFactory("Altafin")
+    this.AltaHelix = await ethers.getContractFactory("AltaHelix")
+
+    this.signers = await ethers.getSigners()
+    this.alice = this.signers[0]
+    this.bob = this.signers[1]
+    this.carol = this.signers[2]
+  })
+
+  beforeEach(async function () {
+    this.afn = await this.AltaFin.deploy()
+    this.xafn = await this.AltaHelix.deploy(this.afn.address)
+    this.afn.mint(this.alice.address, "100")
+    this.afn.mint(this.bob.address, "100")
+    this.afn.mint(this.carol.address, "100")
+  })
+
+  it("should not allow enter if not enough approve", async function () {
+    debugger;
+    await expect(this.xafn.enter("100")).to.be.revertedWith("ERC20: transfer amount exceeds allowance")
+    await this.afn.approve(this.xafn.address, "50")
+    await expect(this.xafn.enter("100")).to.be.revertedWith("ERC20: transfer amount exceeds allowance")
+    await this.afn.approve(this.xafn.address, "100")
+    await this.xafn.enter("100")
+    expect(await this.xafn.balanceOf(this.alice.address)).to.equal("100")
+  })
+
+  it("should not allow withraw more than what you have", async function () {
+    debugger;
+    await this.afn.approve(this.xafn.address, "100")
+    await this.xafn.enter("100")
+    await expect(this.bar.leave("200")).to.be.revertedWith("ERC20: burn amount exceeds balance")
+  })
+
+  it("should work with more than one participant", async function () {
+    debugger;
+    await this.afn.approve(this.xafn.address, "100")
+    await this.afn.connect(this.bob).approve(this.xafn.address, "100", { from: this.bob.address })
+    // Alice enters and gets 20 shares. Bob enters and gets 10 shares.
+    await this.xafn.enter("20")
+    await this.xafn.connect(this.bob).enter("10", { from: this.bob.address })
+    expect(await this.xafn.balanceOf(this.alice.address)).to.equal("20")
+    expect(await this.xafn.balanceOf(this.bob.address)).to.equal("10")
+    expect(await this.afn.balanceOf(this.xafn.address)).to.equal("30")
+    // AltaHelix get 20 more AFN from an external source.
+    await this.afn.connect(this.carol).transfer(this.xafn.address, "20", { from: this.carol.address })
+    // Alice deposits 10 more AFN. She should receive 10*30/50 = 6 shares.
+    await this.xafn.enter("10")
+    expect(await this.xafn.balanceOf(this.alice.address)).to.equal("26")
+    expect(await this.xafn.balanceOf(this.bob.address)).to.equal("10")
+    // Bob withdraws 5 shares. He should receive 5*60/36 = 8 shares
+    await this.xafn.connect(this.bob).leave("5", { from: this.bob.address })
+    expect(await this.xafn.balanceOf(this.alice.address)).to.equal("26")
+    expect(await this.xafn.balanceOf(this.bob.address)).to.equal("5")
+    expect(await this.afn.balanceOf(this.xafn.address)).to.equal("52")
+    expect(await this.afn.balanceOf(this.alice.address)).to.equal("70")
+    expect(await this.afn.balanceOf(this.bob.address)).to.equal("98")
+  })
+})
