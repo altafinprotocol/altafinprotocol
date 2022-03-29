@@ -5,6 +5,7 @@ coverage/
 exports/
 node_modules/
 types/
+typechain-types/
 package-lock.json
 coverage.json
 .env
