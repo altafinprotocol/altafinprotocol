@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract AltaAsset is ERC20, ERC20Burnable, Ownable {
-    constructor() ERC20("AltaAsset", "raALTA") {}
+    constructor() ERC20("Alta Asset", "raALTA") {}
 
     function mint(address to, uint256 amount) public onlyOwner {
         _mint(to, amount);
