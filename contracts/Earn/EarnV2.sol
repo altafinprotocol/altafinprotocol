@@ -8,8 +8,8 @@ contract EarnV2 is EarnBase {
 
     IERC20 public ALTA;
     IERC20 public USDC;
-    address loanAddress;
-    address feeAddress;
+    address public loanAddress;
+    address public feeAddress;
 
     // Interest Bonus based off time late
     uint256 public baseBonusMultiplier;
