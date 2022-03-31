@@ -356,7 +356,7 @@ contract EarnV2 is EarnBase {
     /**
      * Internal function to calculate the amount of USDC and ALTA needed to close an earnContract
      * @param _earnContractId index of earn contract in earnContracts
-     * @return USDC amount
+     * @return usdcAmount USDC amount
      * @return ALTA amount
      */
     function _calculatePaymentAmounts(uint256 _earnContractId)
@@ -398,8 +398,8 @@ contract EarnV2 is EarnBase {
     /**
      * @dev calculate the currrent USDC + ALTA interest available for the contract
      * @param _earnContractId index of earn contract in earnContracts
-     * @return USDC interest amount
-     * @return ALTA interest amount
+     * @return usdcInterestAmount USDC interest amount
+     * @return altaInterestAmount ALTA interest amount
      */
     function calculateInterest(uint256 _earnContractId)
         public
@@ -459,7 +459,7 @@ contract EarnV2 is EarnBase {
      * @dev calculate the currrent USDC held in the contract
      * @param _usdcPrincipal USDC principal amount
      * @param _usdcRate USDC interest rate
-     * @return USDC interest amount to be reserved in this contract upon Earn creation
+     * @return usdcInterestAmount USDC interest amount to be reserved in this contract upon Earn creation
      */
     function calculateInterestReserves(
         uint256 _usdcPrincipal,
@@ -623,17 +623,15 @@ contract EarnV2 is EarnBase {
      * @param _earnContractId index of earn contract in earnContracts
      */
     function _removeAllContractBids(uint256 _earnContractId) internal {
-        uint256[] memory bids = getAllBids();
+        Bid[] memory allBids = getAllBids();
 
         // iterate from the end of the array to not change the index of an upcoming iteration
-        for (uint256 i = bids.length - 1; i >= 0; i--) {
-            if (bids[i].earnContractId == _earnContractId) {
-                uint256 bidId = bids[i];
-                Bid memory bid = bids[bidId];
+        for (uint256 i = allBids.length - 1; i >= 0; i--) {
+            if (allBids[i].earnContractId == _earnContractId) {
                 if (bid.accepted != true) {
                     ALTA.safeTransfer(bid.bidder, bid.amount);
                 }
-                _removeBid(bidId);
+                _removeBid(i);
             }
         }
     }
