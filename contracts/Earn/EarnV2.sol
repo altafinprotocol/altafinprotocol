@@ -3,47 +3,81 @@ pragma solidity ^0.8.9;
 
 import "./EarnBase.sol";
 
+/**
+@title Alta Finance Earn
+@author Alta Finance Team
+@notice This contract is a lending protocol where consumers lend ALTA and receive stable yields secured by real assets.
+*/
 contract EarnV2 is EarnBase {
     using SafeERC20 for IERC20;
 
+    /// ALTA token
     IERC20 public ALTA;
+
+    /// USDC token
     IERC20 public USDC;
+
+    /// Address of wallet to receive funds
     address public loanAddress;
-    address public feeAddress;
 
-    // Interest Bonus based off time late
-    uint256 public baseBonusMultiplier;
-    uint256 public altaBonusMultiplier;
+    /// USDC interest multiplier for contracts closed after 7 day buffer period
+    uint256 public baseBonusMultiplier = 150; //150 = 1.5x
 
+    /// ALTA interest multiplier for contracts closed after 7 day buffer period
+    uint256 public altaBonusMultiplier = 200; // 200 = 2x
+
+    /// Percent of bid amount transferred to Alta Finance as a service fee (100 = 10%)
     uint256 public transferFee; // 100 = 10%
+
+    /// Number of days of interest kept in this smart contract upon Earn creation
     uint256 public reserveDays;
+
     bool migrated = false;
 
-    // List of all events emitted by the contract
+    /**
+    @param owner Address of the contract owner
+    @param earnContractId index of earn contracat in earnContracts
+    */
     event ContractOpened(address indexed owner, uint256 earnContractId);
+
+    /**
+    @param owner Address of the contract owner
+    @param earnContractId index of earn contract in earnContracts
+     */
     event ContractClosed(address indexed owner, uint256 earnContractId);
+
+    /**
+    @param previousOwner Address of the previous contract owner
+    @param newOwner Address of the new contract owner
+    @param earnContractId Index of earn contract in earnContracts
+     */
     event EarnContractOwnershipTransferred(
         address indexed previousOwner,
         address indexed newOwner,
         uint256 earnContractId
     );
+
+    /**
+    @param bidder Address of the bidder
+    @param bidId Index of bid in bids
+     */
     event BidMade(address indexed bidder, uint256 bidId);
+
+    /// @param earnContractId Index of earn contract in earnContracts
     event ContractForSale(uint256 earnContractId);
+
+    /// @param earnContractId Index of earn contract in earnContracts
     event ContractOffMarket(uint256 earnContractId);
 
     constructor(
         IERC20 _USDC,
         IERC20 _ALTA,
-        address _loanAddress,
-        address _feeAddress
+        address _loanAddress
     ) {
         USDC = _USDC;
         ALTA = _ALTA;
-        baseBonusMultiplier = 150; //150 = 1.5x
-        altaBonusMultiplier = 200; // 200 = 2x
-        reserveDays = 7;
         loanAddress = _loanAddress;
-        feeAddress = _feeAddress;
+        reserveDays = 7;
         transferFee = 0;
     }
 
@@ -112,12 +146,6 @@ contract EarnV2 is EarnBase {
     EarnTerm[] public earnTerms;
     EarnContract[] public earnContracts;
     Bid[] public bids;
-
-    // Maps the earn contract id to the owner
-    mapping(uint256 => address) public earnContractToOwner;
-
-    // Maps the number of bids per earn contract
-    mapping(uint256 => uint256) public earnContractBidCount;
 
     /**
      * @param _time Length of the contract in days
@@ -193,23 +221,6 @@ contract EarnV2 is EarnBase {
      */
     function getAllEarnTerms() public view returns (EarnTerm[] memory) {
         return earnTerms;
-    }
-
-    /**
-     * @notice Use the public getter function for earnTerms for a single earnTerm
-     * @return An array of type EarnTerm with open == true
-     */
-    function getAllOpenEarnTerms() public view returns (EarnTerm[] memory) {
-        EarnTerm[] memory result = new EarnTerm[](earnTerms.length);
-        uint256 counter = 0;
-
-        for (uint256 i = 0; i < earnTerms.length; i++) {
-            if (earnTerms[i].open == true) {
-                result[counter] = earnTerms[i];
-                counter++;
-            }
-        }
-        return result;
     }
 
     /**
@@ -308,7 +319,6 @@ contract EarnV2 is EarnBase {
 
         earnContracts.push(earnContract);
         uint256 id = earnContracts.length - 1;
-        earnContractToOwner[id] = msg.sender; // assign the earn contract to the owner;
         emit ContractOpened(msg.sender, id);
     }
 
@@ -346,6 +356,8 @@ contract EarnV2 is EarnBase {
     /**
      * Internal function to calculate the amount of USDC and ALTA needed to close an earnContract
      * @param _earnContractId index of earn contract in earnContracts
+     * @return USDC amount
+     * @return ALTA amount
      */
     function _calculatePaymentAmounts(uint256 _earnContractId)
         internal
@@ -386,6 +398,8 @@ contract EarnV2 is EarnBase {
     /**
      * @dev calculate the currrent USDC + ALTA interest available for the contract
      * @param _earnContractId index of earn contract in earnContracts
+     * @return USDC interest amount
+     * @return ALTA interest amount
      */
     function calculateInterest(uint256 _earnContractId)
         public
@@ -445,6 +459,7 @@ contract EarnV2 is EarnBase {
      * @dev calculate the currrent USDC held in the contract
      * @param _usdcPrincipal USDC principal amount
      * @param _usdcRate USDC interest rate
+     * @return USDC interest amount to be reserved in this contract upon Earn creation
      */
     function calculateInterestReserves(
         uint256 _usdcPrincipal,
@@ -460,6 +475,7 @@ contract EarnV2 is EarnBase {
 
     /**
      * gets all earn contracts
+     * @return array of all earn contracts
      */
     function getAllEarnContracts() public view returns (EarnContract[] memory) {
         return earnContracts;
@@ -469,6 +485,7 @@ contract EarnV2 is EarnBase {
      * Swaps ERC20->ERC20 tokens held by this contract using a 0x-API quote.
      * @param _swapTarget 'To' field from the 0x API response
      * @param _swapCallData 'Data' field from the 0x API response
+     * @return USDC amount received after swap from ALTA
      */
     function _swapToUSDCOnZeroX(
         uint256 _earnTermId,
@@ -503,7 +520,7 @@ contract EarnV2 is EarnBase {
      */
     function putSale(uint256 _earnContractId) external whenNotPaused {
         require(
-            msg.sender == earnContractToOwner[_earnContractId],
+            msg.sender == earnContracts[_earnContractId].owner,
             "Msg.sender is not the owner"
         );
         earnContracts[_earnContractId].status = ContractStatus.FORSALE;
@@ -511,8 +528,8 @@ contract EarnV2 is EarnBase {
     }
 
     /**
-     * Submits a bid for an earn contract on sale in the market
-     * User must sign an approval transaction for first. ALTA.approve(address(this), _amount);
+     * @notice Submits a bid for an earn contract on sale in the market
+     * @dev User must sign an approval transaction for first. ALTA.approve(address(this), _amount);
      * @param _earnContractId index of earn contract in earnContracts
      * @param _amount Amount of ALTA offered for bid
      */
@@ -536,9 +553,6 @@ contract EarnV2 is EarnBase {
 
         bids.push(bid);
         uint256 bidId = bids.length - 1;
-        earnContractBidCount[_earnContractId] =
-            earnContractBidCount[_earnContractId] +
-            1; // increment the number of bids for the earn contract;
 
         // Send the bid amount to this contract
         ALTA.safeTransferFrom(msg.sender, address(this), _amount);
@@ -554,18 +568,16 @@ contract EarnV2 is EarnBase {
         Bid memory bid = bids[_bidId];
         uint256 earnContractId = bid.earnContractId;
 
-        uint256 fee = (bid.amount * transferFee) / 1000;
-        if (fee > 0) {
-            bid.amount = bid.amount - fee;
-        }
-
         // Transfer bid ALTA to contract seller
         require(
-            msg.sender == earnContractToOwner[earnContractId],
-            "Msg.sender is not the owner of the earn contract"
+            msg.sender == earnContracts[earnContractId].owner,
+            "Msg.sender is not the owner"
         );
+
+        uint256 fee = (bid.amount * transferFee) / 1000;
+
         if (fee > 0) {
-            ALTA.safeTransfer(feeAddress, fee);
+            ALTA.safeTransfer(loanAddress, fee);
             bid.amount = bid.amount - fee;
         }
         ALTA.safeTransfer(bid.to, bid.amount);
@@ -579,7 +591,6 @@ contract EarnV2 is EarnBase {
             earnContractId
         );
         earnContracts[earnContractId].owner = bid.bidder;
-        earnContractToOwner[earnContractId] = bid.bidder;
 
         // Remove all bids
         _removeContractFromMarket(earnContractId);
@@ -591,8 +602,8 @@ contract EarnV2 is EarnBase {
      */
     function removeContractFromMarket(uint256 _earnContractId) external {
         require(
-            earnContractToOwner[_earnContractId] == msg.sender,
-            "Msg.sender is not the owner of the earn contract"
+            msg.sender == earnContracts[_earnContractId].owner,
+            "Msg.sender is not the owner"
         );
         _removeContractFromMarket(_earnContractId);
     }
@@ -608,40 +619,22 @@ contract EarnV2 is EarnBase {
     }
 
     /**
-     * Getter functions for all bids of a specified earn contract
-     * @param _earnContractId index of earn contract in earnContracts
-     */
-    function getBidsByContract(uint256 _earnContractId)
-        public
-        view
-        returns (uint256[] memory)
-    {
-        uint256[] memory result = new uint256[](
-            earnContractBidCount[_earnContractId]
-        );
-        uint256 counter = 0;
-        for (uint256 i = 0; i < bids.length; i++) {
-            if (bids[i].earnContractId == _earnContractId) {
-                result[counter] = i;
-                counter++;
-            }
-        }
-        return result;
-    }
-
-    /**
      * Sends all bid funds for an earn contract back to the bidder and removes them arrays and mappings
      * @param _earnContractId index of earn contract in earnContracts
      */
     function _removeAllContractBids(uint256 _earnContractId) internal {
-        uint256[] memory contractBids = getBidsByContract(_earnContractId);
-        for (uint256 i = 0; i < contractBids.length; i++) {
-            uint256 bidId = contractBids[0];
-            Bid memory bid = bids[bidId];
-            if (bid.accepted != true) {
-                ALTA.safeTransfer(bid.bidder, bid.amount);
+        uint256[] memory bids = getAllBids();
+
+        // iterate from the end of the array to not change the index of an upcoming iteration
+        for (uint256 i = bids.length - 1; i >= 0; i--) {
+            if (bids[i].earnContractId == _earnContractId) {
+                uint256 bidId = bids[i];
+                Bid memory bid = bids[bidId];
+                if (bid.accepted != true) {
+                    ALTA.safeTransfer(bid.bidder, bid.amount);
+                }
+                _removeBid(bidId);
             }
-            _removeBid(bidId);
         }
     }
 
@@ -663,14 +656,6 @@ contract EarnV2 is EarnBase {
     function _removeBid(uint256 _bidId) internal {
         require(_bidId < bids.length, "Bid ID longer than array length");
         Bid memory bid = bids[_bidId];
-
-        // Update the mappings
-        uint256 earnContractId = bid.earnContractId;
-        if (earnContractBidCount[earnContractId] > 0) {
-            earnContractBidCount[earnContractId] =
-                earnContractBidCount[earnContractId] -
-                1;
-        }
 
         // Update the array
         if (bids.length > 1) {
@@ -696,51 +681,12 @@ contract EarnV2 is EarnBase {
     }
 
     /**
-     * Set the reserveDays
-     * @param _reserveDays Number of days interest to be stored in address(this) upon contract creation
-     */
-    function setReserveDays(uint256 _reserveDays) external onlyOwner {
-        reserveDays = _reserveDays;
-    }
-
-    /**
-     * Set the Bonus USDC multiplier ( e.g. 20 = 2x multiplier on the interest rate)
-     * @param _baseBonusMultiplier Base Bonus multiplier for contract left open after contract length completion
-     */
-    function setBaseBonusMultiplier(uint256 _baseBonusMultiplier)
-        external
-        onlyOwner
-    {
-        baseBonusMultiplier = _baseBonusMultiplier;
-    }
-
-    /**
-     * Set the Bonus ALTA multiplier ( e.g. 20 = 2x multiplier on the ALTA Amount)
-     * @param _altaBonusMultiplier ALTA Bonus multiplier for contract left open after contract length completion
-     */
-    function setAltaBonusMultiplier(uint256 _altaBonusMultiplier)
-        external
-        onlyOwner
-    {
-        altaBonusMultiplier = _altaBonusMultiplier;
-    }
-
-    /**
      * Set the loanAddress
      * @param _loanAddress Wallet address to recieve loan funds
      */
     function setLoanAddress(address _loanAddress) external onlyOwner {
         require(_loanAddress != address(0));
         loanAddress = _loanAddress;
-    }
-
-    /**
-     * Set the feeAddress
-     * @param _feeAddress Wallet address to recieve fee funds
-     */
-    function setFeeAddress(address _feeAddress) external onlyOwner {
-        require(_feeAddress != address(0));
-        feeAddress = _feeAddress;
     }
 
     /**
@@ -780,7 +726,6 @@ contract EarnV2 is EarnBase {
 
         earnContracts.push(earnContract); // add the contract to the array
         uint256 id = earnContracts.length - 1; // get the id of the earnContract
-        earnContractToOwner[id] = mContract.owner; // assign the earn contract to the owner;
         emit ContractOpened(mContract.owner, id); // emit the event
     }
 }
