@@ -12,7 +12,8 @@ import hre from "hardhat"
 // List of variables that are reused throughout the tests
 const ALTA = "0xe0cCa86B254005889aC3a81e737f56a14f4A38F5"
 const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-const LOAN_ADDRESS = "0xbdffbabfc682f4a800ebfba3ed147fd629fc8572"
+const LOAN_ADDRESS = "0xBDfFBAbFC682f4a800EBFBA3eD147fd629FC8572"
+const FEE_ADDRESS = "0xBDfFBAbFC682f4a800EBFBA3eD147fd629FC8572"
 const treasury = '0x087183a411770a645A96cf2e31fA69Ab89e22F5E'
 const usdcWhale = '0xfc7470c14baef608dc316f5702790eefee9cc258'
 const MAX_UINT = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
@@ -51,7 +52,7 @@ interface EarnContract {
 describe("Earn", async () => {
     before(async () => {
         const Earn: EarnV2__factory = (await ethers.getContractFactory("EarnV2")) as EarnV2__factory
-        earn = await Earn.deploy(USDC, ALTA, LOAN_ADDRESS, LOAN_ADDRESS)
+        earn = await Earn.deploy(USDC, ALTA, LOAN_ADDRESS, FEE_ADDRESS)
         let signers = await ethers.getSigners()
         deployer = signers[0]
         altaContract = new ethers.Contract(ALTA, JSON.parse(altaABI), deployer)
@@ -128,6 +129,62 @@ describe("Earn", async () => {
 
             let contract = await earn.getAllEarnContracts()
             expect(contract.length).to.equal(oldContracts.length)
+        })
+    })
+
+    describe("Setter Functions", async () => {
+        it("Should set the Transfer Fee", async function () {
+            let transferFee = await earn.transferFee()
+            expect(transferFee).to.be.equal(0)
+            await earn.setTransferFee(BigNumber.from(100))
+            transferFee = await earn.transferFee()
+            expect(transferFee).to.be.not.equal(0)
+            expect(transferFee).to.be.equal(BigNumber.from(100))
+        })
+
+        it("Should set the Reserve Days", async function () {
+            let reserveDays = await earn.reserveDays()
+            expect(reserveDays).to.be.equal(7)
+            await earn.setReserveDays(BigNumber.from(10))
+            reserveDays = await earn.reserveDays()
+            expect(reserveDays).to.be.not.equal(7)
+            expect(reserveDays).to.be.equal(BigNumber.from(10))
+        })
+
+        it("Should set the Base Bonus Multiplier", async function () {
+            let baseBonusMultiplier = await earn.baseBonusMultiplier()
+            expect(baseBonusMultiplier).to.be.equal(150)
+            await earn.setBaseBonusMultiplier(BigNumber.from(125))
+            baseBonusMultiplier = await earn.baseBonusMultiplier()
+            expect(baseBonusMultiplier).to.be.not.equal(150)
+            expect(baseBonusMultiplier).to.be.equal(BigNumber.from(125))
+        })
+
+        it("Should set the Alta Bonus Multiplier", async function () {
+            let altaBonusMultiplier = await earn.altaBonusMultiplier()
+            expect(altaBonusMultiplier).to.be.equal(200)
+            await earn.setAltaBonusMultiplier(BigNumber.from(150))
+            altaBonusMultiplier = await earn.altaBonusMultiplier()
+            expect(altaBonusMultiplier).to.be.not.equal(200)
+            expect(altaBonusMultiplier).to.be.equal(BigNumber.from(150))
+        })
+
+        it("Should set the Loan Address", async function () {
+            let loanAddress = await earn.loanAddress()
+            expect(loanAddress).to.be.equal(LOAN_ADDRESS)
+            await earn.setLoanAddress(ALTA)
+            loanAddress = await earn.loanAddress()
+            expect(loanAddress).to.be.not.equal(LOAN_ADDRESS)
+            expect(loanAddress).to.be.equal(ALTA)
+        })
+
+        it("Should set the Fee Address", async function () {
+            let feeAddress = await earn.feeAddress()
+            expect(feeAddress).to.be.equal(FEE_ADDRESS)
+            await earn.setFeeAddress(ALTA)
+            feeAddress = await earn.feeAddress()
+            expect(feeAddress).to.be.not.equal(FEE_ADDRESS)
+            expect(feeAddress).to.be.equal(ALTA)
         })
     })
 
