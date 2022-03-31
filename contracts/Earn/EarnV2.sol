@@ -15,8 +15,8 @@ contract EarnV2 is EarnBase {
     uint256 public baseBonusMultiplier;
     uint256 public altaBonusMultiplier;
 
-    uint256 public transferFee;
-    uint256 reserveDays;
+    uint256 public transferFee; // 100 = 10%
+    uint256 public reserveDays;
     bool migrated = false;
 
     // List of all events emitted by the contract
@@ -44,6 +44,7 @@ contract EarnV2 is EarnBase {
         reserveDays = 7;
         loanAddress = _loanAddress;
         feeAddress = _feeAddress;
+        transferFee = 0;
     }
 
     enum ContractStatus {
@@ -114,9 +115,6 @@ contract EarnV2 is EarnBase {
 
     // Maps the earn contract id to the owner
     mapping(uint256 => address) public earnContractToOwner;
-
-    // Maps the number of earn contracts for a given user
-    mapping(address => uint256) public ownerEarnContractCount;
 
     // Maps the number of bids per earn contract
     mapping(uint256 => uint256) public earnContractBidCount;
@@ -311,9 +309,6 @@ contract EarnV2 is EarnBase {
         earnContracts.push(earnContract);
         uint256 id = earnContracts.length - 1;
         earnContractToOwner[id] = msg.sender; // assign the earn contract to the owner;
-        ownerEarnContractCount[msg.sender] =
-            ownerEarnContractCount[msg.sender] +
-            1; // increment the number of earn contract owned for the user;
         emit ContractOpened(msg.sender, id);
     }
 
@@ -464,82 +459,6 @@ contract EarnV2 is EarnBase {
     }
 
     /**
-     * Gets the current value of all earn terms for a given user
-     * @param _owner address of owner to query
-     */
-    function getCurrentUsdcValueByOwner(address _owner)
-        public
-        view
-        returns (uint256)
-    {
-        uint256[] memory result = getContractsByOwner(_owner);
-        uint256 currValue = 0;
-
-        for (uint256 i = 0; i < result.length; i++) {
-            EarnContract memory earnContract = earnContracts[result[i]];
-            if (earnContract.status != ContractStatus.CLOSED) {
-                uint256 timeHeld = (block.timestamp - earnContract.startTime) /
-                    365 days;
-                currValue =
-                    currValue +
-                    earnContract.usdcPrincipal +
-                    (earnContract.usdcPrincipal *
-                        earnContract.usdcRate *
-                        timeHeld);
-            }
-        }
-        return currValue;
-    }
-
-    /**
-     * Gets the value at time of redemption for all earns terms for a given user
-     * @param _owner address of owner to query
-     */
-    function getRedemptionUsdcValueByOwner(address _owner)
-        public
-        view
-        returns (uint256)
-    {
-        uint256[] memory result = getContractsByOwner(_owner);
-        uint256 currValue = 0;
-
-        for (uint256 i = 0; i < result.length; i++) {
-            EarnContract memory earnContract = earnContracts[result[i]];
-            if (earnContract.status != ContractStatus.CLOSED) {
-                currValue =
-                    currValue +
-                    earnContract.usdcPrincipal +
-                    (
-                        ((earnContract.usdcPrincipal *
-                            earnContract.usdcRate *
-                            earnContract.contractLength) / 365 days)
-                    );
-            }
-        }
-        return currValue;
-    }
-
-    /**
-     * Gets every earn contract for a given user
-     * @param _owner Wallet Address for expected earn contract owner
-     */
-    function getContractsByOwner(address _owner)
-        public
-        view
-        returns (uint256[] memory)
-    {
-        uint256[] memory result = new uint256[](ownerEarnContractCount[_owner]);
-        uint256 counter = 0;
-        for (uint256 i = 0; i < earnContracts.length; i++) {
-            if (earnContractToOwner[i] == _owner) {
-                result[counter] = i;
-                counter++;
-            }
-        }
-        return result;
-    }
-
-    /**
      * gets all earn contracts
      */
     function getAllEarnContracts() public view returns (EarnContract[] memory) {
@@ -661,9 +580,6 @@ contract EarnV2 is EarnBase {
         );
         earnContracts[earnContractId].owner = bid.bidder;
         earnContractToOwner[earnContractId] = bid.bidder;
-        ownerEarnContractCount[bid.bidder] =
-            ownerEarnContractCount[bid.bidder] +
-            1;
 
         // Remove all bids
         _removeContractFromMarket(earnContractId);
@@ -865,9 +781,6 @@ contract EarnV2 is EarnBase {
         earnContracts.push(earnContract); // add the contract to the array
         uint256 id = earnContracts.length - 1; // get the id of the earnContract
         earnContractToOwner[id] = mContract.owner; // assign the earn contract to the owner;
-        ownerEarnContractCount[mContract.owner] =
-            ownerEarnContractCount[mContract.owner] +
-            1; // increment the number of earn contract owned for the user;
         emit ContractOpened(mContract.owner, id); // emit the event
     }
 }
