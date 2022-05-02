@@ -398,6 +398,30 @@ describe("Earn", async () => {
             expect(earnContract[0].tier).to.be.equal(2)
         })
 
+        it("Should emit a ContractOpened event", async function () {
+            await hre.network.provider.request({
+                method: "hardhat_impersonateAccount",
+                params: [usdcWhale],
+            })
+            signer = await ethers.getSigner(usdcWhale)
+            const usdcBalance = await usdcContract.balanceOf(usdcWhale)
+            await usdcContract.connect(signer).approve(earn.address, BigNumber.from(MAX_UINT))
+
+            await earn.addTerm(time, interestRate, altaRatio)
+            expect(await earn.earnTerms(0)).to.be.not.null
+
+            let altaTransfer = await earn.tier2Amount()
+
+            expect(altaTransfer).to.be.equal("100000000000000000000000")
+
+            await altaContract.connect(signer).approve(earn.address, altaTransfer)
+
+            let amount = "10000000000" // $10,000 USDC
+            expect(await earn.connect(signer).openContract(0, amount, USDC, BigNumber.from(altaTransfer)))
+                .to.emit(earn, 'ContractOpened')
+                .withArgs(signer.address, 0)
+        })
+
         it("Should revert openContract if term is closed", async function () {
             await hre.network.provider.request({
                 method: "hardhat_impersonateAccount",
@@ -518,6 +542,58 @@ describe("Earn", async () => {
 
         })
 
+        it("Should emit a Redemption event", async function () {
+            await hre.network.provider.request({
+                method: "hardhat_impersonateAccount",
+                params: [usdcWhale],
+            })
+            signer = await ethers.getSigner(usdcWhale)
+            await usdcContract.connect(signer).approve(earn.address, BigNumber.from(MAX_UINT))
+
+            await earn.addTerm(time, interestRate, altaRatio)
+
+            let amount = "10000000000" // $10,000 USDC
+            const openContract = await earn.connect(signer).openContract(0, amount, USDC, 0)
+            await openContract.wait()
+
+            let earnContract = await earn.getAllEarnContracts()
+
+            let term = await earn.earnTerms(earnContract[0].termIndex)
+
+            let blockTime = 0xD2F00 // 864000 seconds = 10 days
+
+            // Test interest redemption
+            await hre.network.provider.request({
+                method: "evm_increaseTime",
+                params: [blockTime] // 864000 seconds = 10 days
+            })
+
+            await hre.network.provider.request({
+                method: "hardhat_mine",
+                params: ["0x1"] // 1 block
+            })
+
+            await hre.network.provider.request({
+                method: "hardhat_impersonateAccount",
+                params: [usdcWhale2],
+            })
+
+            await hre.network.provider.request({
+                method: "hardhat_impersonateAccount",
+                params: [treasury],
+            })
+            let tSigner = await ethers.getSigner(treasury)
+            await altaContract.connect(tSigner).transfer(earn.address, ethers.utils.parseEther("10000.0"))
+
+            let whale = await ethers.getSigner(usdcWhale2)
+            await usdcContract.connect(whale).transfer(earn.address, "1000000000000")
+
+            expect(await earn.connect(signer).redeem(0))
+                .to.emit(earn, "Redemption")
+                .withArgs(signer.address, 0, USDC, amount, 0)
+
+        })
+
         it("Should redeem principal and close contract after maturation", async function () {
             await hre.network.provider.request({
                 method: "hardhat_impersonateAccount",
@@ -589,6 +665,58 @@ describe("Earn", async () => {
             expect(Number(altaRedeemed)).to.be.equal(expectedAlta)
         })
 
+        it("Should emit a ContractClosed event", async function () {
+            await hre.network.provider.request({
+                method: "hardhat_impersonateAccount",
+                params: [usdcWhale],
+            })
+            signer = await ethers.getSigner(usdcWhale)
+            const usdcBalance = await usdcContract.balanceOf(usdcWhale)
+            await usdcContract.connect(signer).approve(earn.address, BigNumber.from(MAX_UINT))
+
+            await earn.addTerm(time, interestRate, altaRatio)
+            expect(await earn.earnTerms(0)).to.be.not.null
+
+            let amount = "10000000000" // $10,000 USDC
+            const openContract = await earn.connect(signer).openContract(0, amount, USDC, 0)
+            await openContract.wait()
+
+            let earnContract = await earn.getAllEarnContracts()
+            expect(earnContract.length).to.be.equal(1)
+
+            let term = await earn.earnTerms(earnContract[0].termIndex)
+
+            let blockTime = 0x5A39A80 // 94608000 seconds = 1095 days
+
+            await hre.network.provider.request({
+                method: "evm_increaseTime",
+                params: [blockTime] // 94608000 seconds = 1095 days
+            })
+
+            await hre.network.provider.request({
+                method: "hardhat_mine",
+                params: ["0x1"] // 1 block
+            })
+
+            await hre.network.provider.request({
+                method: "hardhat_impersonateAccount",
+                params: [usdcWhale2],
+            })
+            await hre.network.provider.request({
+                method: "hardhat_impersonateAccount",
+                params: [treasury],
+            })
+            let tSigner = await ethers.getSigner(treasury)
+            await altaContract.connect(tSigner).transfer(earn.address, ethers.utils.parseEther("10000.0"))
+
+            let whale = await ethers.getSigner(usdcWhale2)
+            await usdcContract.connect(whale).transfer(earn.address, "1000000000000")
+
+            expect(await earn.connect(signer).redeem(0))
+                .to.emit(earn, 'ContractClosed')
+                .withArgs(signer.address, 0)
+        })
+
         it("Should redeem all contracts owned by signer", async function () {
 
         })
@@ -641,6 +769,39 @@ describe("Earn", async () => {
             earnContract0 = await earn.earnContracts(0)
             // successfully transfer ownership after acceptBid
             expect(earnContract0.owner).to.be.equal(deployer.address)
+        })
+
+        it("Should emit a BidMade and EarnContractOwnershipTransferred event", async function () {
+            let altaBalance = await altaContract.balanceOf(treasury)
+            await altaContract.connect(signer).transfer(accountToFund, altaBalance)
+
+            await hre.network.provider.request({
+                method: "hardhat_impersonateAccount",
+                params: [usdcWhale],
+            })
+            signer = await ethers.getSigner(usdcWhale)
+            await usdcContract.connect(signer).approve(earn.address, BigNumber.from(MAX_UINT))
+
+            await earn.addTerm(time, interestRate, altaRatio)
+            expect(await earn.earnTerms(0)).to.be.not.null
+
+            let amount = "10000000000" // $10,000 USDC
+            const openContract = await earn.connect(signer).openContract(0, amount, USDC, 0)
+            await openContract.wait()
+
+            await earn.connect(signer).putSale(0)
+
+            amount = '20000000000000000000'
+            expect(await earn.connect(deployer).makeBid(0, amount))
+                .to.emit(earn, "BidMade")
+                .withArgs(deployer.address, 0)
+
+            altaBalance = await altaContract.balanceOf(earn.address)
+
+            expect(await earn.connect(signer).acceptBid(0))
+                .to.emit(earn, 'EarnContractOwnershipTransferred')
+                .withArgs(signer.address, deployer.address, 0)
+
         })
 
         it("Should remove contract from market without bids", async function () {
@@ -696,7 +857,9 @@ describe("Earn", async () => {
             let earnContract = await earn.getAllEarnContracts()
             expect(earnContract.length).to.be.equal(1)
 
-            await earn.connect(signer).putSale(0)
+            expect(await earn.connect(signer).putSale(0))
+                .to.emit(earn, "ContractForSale")
+                .withArgs(0)
 
             let earnContract0 = await earn.earnContracts(0)
             expect(earnContract0.status).to.be.equal(2)
