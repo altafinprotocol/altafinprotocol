@@ -11,7 +11,6 @@ contract EarnBase is Ownable, Pausable, ReentrancyGuard {
     event Withdrawal(address indexed sender, uint256 amount);
 
     /**
-     * @dev function to withdraw erc20 tokens
      * @param _token - token to be withdrawn
      * @param _to - address to withdraw to
      * @param _amount - amount of token to withdraw
@@ -27,11 +26,11 @@ contract EarnBase is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @dev function to withdraw ether
      * @param _to address of transfer recipient
      * @param _amount amount of ether to be transferred
      */
-    function withdraw(address payable _to, uint256 _amount) public onlyOwner {
+    // Function to transfer Ether from this contract to address from input
+    function transfer(address payable _to, uint256 _amount) public onlyOwner {
         // Note that "to" is declared as payable
         (bool success, ) = _to.call{value: _amount}("");
         require(success, "Failed to send Ether");
@@ -49,5 +48,11 @@ contract EarnBase is Ownable, Pausable, ReentrancyGuard {
      */
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    event Received(address, uint);
+
+    receive() external payable {
+        emit Received(msg.sender, msg.value);
     }
 }
