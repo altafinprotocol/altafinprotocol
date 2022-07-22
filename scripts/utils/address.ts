@@ -1,0 +1,49 @@
+// Ethereum Mainnet
+export const ALTA = "0xe0cCa86B254005889aC3a81e737f56a14f4A38F5"
+export const USDC = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+export const USDT = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+export const DAI = "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+export const WETH = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
+export const UNI = "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"
+export const LINK = "0x514910771af9ca656af840dff83e8264ecf986ca"
+export const AAVE = "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9"
+export const DYDX = "0x92d6c1e31e14520e676a687f0a93788b716beff5"
+export const WBTC = "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599"
+export const SNX = "0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F"
+export const COMP = "0xc00e94cb662c3520282e6f5717214004a7f26888"
+export const MATIC = "0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0"
+export const BNT = "0x1f573d6fb3f13d689ff844b4ce37794d79a7ff1c"
+export const BUSD = "0x4fabb145d64652a948d72533023f6e7a623c7c53"
+export const SUSHI = "0x6b3595068778dd592e39a122f4f5a5cf09c90fe2"
+export const REN = "0x408e41876cccdc0f92210600ef50372656052a38"
+
+export const UNISWAPV3_ROUTER = "0xE592427A0AEce92De3Edee1F18E0157C05861564"
+export const LOAN_ADDRESS = "0xBDfFBAbFC682f4a800EBFBA3eD147fd629FC8572"
+
+// Polygon
+export const USDC_POLYGON = "0x2791bca1f2de4661ed88a30c99a7a9449aa84174"
+
+// Ropsten
+export const COMP_ROPSTEN = "0xf76d4a441e4ba86a923ce32b89aff89dbccaa075"
+export const USDC_ROPSTEN = "0x07865c6e87b9f70255377e024ace6630c1eaa37f"
+export const WETH_ROPSTEN = "0xc778417E063141139Fce010982780140Aa0cD5Ab"
+export const AFN_ROPSTEN = "0xF3Cc843E6138Eb62f09BB5C16733721055e7785b"
+export const ALTAHELIX_ROPSTEN = "0xaf454f893a6f8a723df1bc6465ac6f15e3d95108"
+export const UNISWAPV3_ROUTER_ROPSTEN = "0xE592427A0AEce92De3Edee1F18E0157C05861564"
+
+// Goerli
+export const USDC_GOERLI = "0x07865c6e87b9f70255377e024ace6630c1eaa37f" // Official Circle Contract
+
+// Rinkeby
+export const USDC_RINKEBY = "0x4dbcdf9b62e891a7cec5a2568c3f4faf9e8abe2b"
+
+// Kovan
+export const USDC_KOVAN = "0xc2569dd7d0fd715b054fbf16e75b001e5c0c1115"
+
+// Mumbai
+export const USDC_MUMBAI = "0xe11a86849d99f524cac3e7a0ec1241828e332c62"
+
+// Avalanche
+
+
+// Avalanche Testnet

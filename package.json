@@ -11,8 +11,8 @@
     "type": "git",
     "url": "git+https://github.com/altafinprotocol/altafinprotocol.git"
   },
-  "keywords": [],
-  "author": "AltaFin",
+  "keywords": ["DeFi", "Solidity", "smart contract", "ethereum"],
+  "author": "Alta Web3 Labs",
   "bugs": {
     "url": "https://github.com/altafinprotocol/altafinprotocol/issues"
   },
