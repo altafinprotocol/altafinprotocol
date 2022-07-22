@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.12;
+pragma solidity ^0.8.9;
 
 contract AltaCreate2Factory {
     event Deployed(address addr, uint256 salt);
